@@ -66,7 +66,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPosts(filters?: { region?: string; subject?: string; targetGrade?: string }): Promise<PostWithAuthor[]> {
-    let queryBase = db.select().from(posts)
+    let query = db.select().from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
       .orderBy(desc(posts.createdAt));
 
@@ -77,11 +77,11 @@ export class DatabaseStorage implements IStorage {
       if (filters.targetGrade) conditions.push(eq(posts.targetGrade, filters.targetGrade));
       
       if (conditions.length > 0) {
-        queryBase = queryBase.where(and(...conditions));
+        query = query.where(and(...conditions));
       }
     }
 
-    const results = await queryBase;
+    const results = await query;
     return results.map(result => ({
       ...result.posts,
       author: result.users!

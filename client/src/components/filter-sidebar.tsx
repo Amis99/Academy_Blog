@@ -9,27 +9,51 @@ interface FilterSidebarProps {
 }
 
 export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
-  const [region, setRegion] = useState("all");
+  const [province, setProvince] = useState("all");
+  const [district, setDistrict] = useState("all");
   const [subject, setSubject] = useState("all");
   const [targetGrade, setTargetGrade] = useState("all");
 
-  const regions = ["강남구", "서초구", "송파구", "마포구", "종로구", "중구", "용산구"];
-  const subjects = ["수학", "영어", "국어", "과학", "사회"];
+  const provinces = {
+    "서울특별시": ["강남구", "서초구", "송파구", "마포구", "종로구", "중구", "용산구", "강서구", "노원구", "은평구"],
+    "경기도": ["수원시", "고양시", "용인시", "성남시", "부천시", "안산시", "안양시", "남양주시", "화성시", "평택시"],
+    "인천광역시": ["남동구", "부평구", "서구", "연수구", "계양구", "미추홀구", "동구", "중구", "강화군", "옹진군"],
+    "부산광역시": ["해운대구", "부산진구", "동래구", "남구", "북구", "사상구", "사하구", "금정구", "강서구", "연제구"],
+    "대구광역시": ["중구", "동구", "서구", "남구", "북구", "수성구", "달서구", "달성군"],
+    "광주광역시": ["동구", "서구", "남구", "북구", "광산구"],
+    "대전광역시": ["중구", "동구", "서구", "유성구", "대덕구"],
+    "울산광역시": ["중구", "남구", "동구", "북구", "울주군"]
+  };
+  
+  const subjects = ["수학", "영어", "국어", "과학", "사회", "음악", "미술", "무용", "체육", "컴퓨터", "기타"];
   const grades = ["초등학생", "중학생", "고등학생", "재수생"];
 
   const handleApplyFilters = () => {
+    let regionValue = "";
+    if (province !== "all" && district !== "all") {
+      regionValue = `${province} ${district}`;
+    } else if (province !== "all") {
+      regionValue = province;
+    }
+    
     onFilterChange({ 
-      region: region === "all" ? "" : region, 
+      region: regionValue, 
       subject: subject === "all" ? "" : subject, 
       targetGrade: targetGrade === "all" ? "" : targetGrade 
     });
   };
 
   const handleResetFilters = () => {
-    setRegion("all");
+    setProvince("all");
+    setDistrict("all");
     setSubject("all");
     setTargetGrade("all");
     onFilterChange({ region: "", subject: "", targetGrade: "" });
+  };
+
+  const handleProvinceChange = (value: string) => {
+    setProvince(value);
+    setDistrict("all"); // Reset district when province changes
   };
 
   return (
@@ -42,15 +66,30 @@ export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
-          <Select value={region} onValueChange={setRegion}>
+          <label className="block text-sm font-medium text-gray-700 mb-2">광역시/도</label>
+          <Select value={province} onValueChange={handleProvinceChange}>
             <SelectTrigger>
               <SelectValue placeholder="전체 지역" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">전체 지역</SelectItem>
-              {regions.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
+              {Object.keys(provinces).map((p) => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">구/군/시</label>
+          <Select value={district} onValueChange={setDistrict} disabled={province === "all"}>
+            <SelectTrigger>
+              <SelectValue placeholder="전체 구/군/시" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체 구/군/시</SelectItem>
+              {province !== "all" && provinces[province as keyof typeof provinces]?.map((d) => (
+                <SelectItem key={d} value={d}>{d}</SelectItem>
               ))}
             </SelectContent>
           </Select>

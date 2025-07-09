@@ -21,14 +21,25 @@ export default function PostModal({ onClose }: PostModalProps) {
   const [formData, setFormData] = useState({
     title: "",
     content: "",
-    region: "",
+    province: "",
+    district: "",
     subject: "",
     targetGrade: "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  const regions = ["강남구", "서초구", "송파구", "마포구", "종로구", "중구", "용산구"];
-  const subjects = ["수학", "영어", "국어", "과학", "사회"];
+  const provinces = {
+    "서울특별시": ["강남구", "서초구", "송파구", "마포구", "종로구", "중구", "용산구", "강서구", "노원구", "은평구"],
+    "경기도": ["수원시", "고양시", "용인시", "성남시", "부천시", "안산시", "안양시", "남양주시", "화성시", "평택시"],
+    "인천광역시": ["남동구", "부평구", "서구", "연수구", "계양구", "미추홀구", "동구", "중구", "강화군", "옹진군"],
+    "부산광역시": ["해운대구", "부산진구", "동래구", "남구", "북구", "사상구", "사하구", "금정구", "강서구", "연제구"],
+    "대구광역시": ["중구", "동구", "서구", "남구", "북구", "수성구", "달서구", "달성군"],
+    "광주광역시": ["동구", "서구", "남구", "북구", "광산구"],
+    "대전광역시": ["중구", "동구", "서구", "유성구", "대덕구"],
+    "울산광역시": ["중구", "남구", "동구", "북구", "울주군"]
+  };
+  
+  const subjects = ["수학", "영어", "국어", "과학", "사회", "음악", "미술", "무용", "체육", "컴퓨터", "기타"];
   const grades = ["초등학생", "중학생", "고등학생", "재수생"];
 
   const createPostMutation = useMutation({
@@ -72,10 +83,12 @@ export default function PostModal({ onClose }: PostModalProps) {
       return;
     }
 
+    const regionValue = formData.district ? `${formData.province} ${formData.district}` : formData.province;
+
     const data = new FormData();
     data.append("title", formData.title);
     data.append("content", formData.content);
-    data.append("region", formData.region);
+    data.append("region", regionValue);
     data.append("subject", formData.subject);
     data.append("targetGrade", formData.targetGrade);
     
@@ -84,6 +97,10 @@ export default function PostModal({ onClose }: PostModalProps) {
     }
 
     createPostMutation.mutate(data);
+  };
+
+  const handleProvinceChange = (value: string) => {
+    setFormData({...formData, province: value, district: ""});
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,20 +118,37 @@ export default function PostModal({ onClose }: PostModalProps) {
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="region">지역</Label>
-              <Select value={formData.region} onValueChange={(value) => setFormData({...formData, region: value})}>
+              <Label htmlFor="province">광역시/도</Label>
+              <Select value={formData.province} onValueChange={handleProvinceChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="지역 선택" />
+                  <SelectValue placeholder="광역시/도 선택" />
                 </SelectTrigger>
                 <SelectContent>
-                  {regions.map((region) => (
-                    <SelectItem key={region} value={region}>{region}</SelectItem>
+                  {Object.keys(provinces).map((province) => (
+                    <SelectItem key={province} value={province}>{province}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            
+            <div>
+              <Label htmlFor="district">구/군/시</Label>
+              <Select value={formData.district} onValueChange={(value) => setFormData({...formData, district: value})} disabled={!formData.province}>
+                <SelectTrigger>
+                  <SelectValue placeholder="구/군/시 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.province && provinces[formData.province as keyof typeof provinces]?.map((district) => (
+                    <SelectItem key={district} value={district}>{district}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             <div>
               <Label htmlFor="subject">과목</Label>
