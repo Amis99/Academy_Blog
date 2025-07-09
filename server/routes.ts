@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import express from "express";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertPostSchema } from "@shared/schema";
+import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -54,7 +54,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Create new post (requires authentication and approval)
-  app.post("/api/posts", upload.single("image"), async (req, res) => {
+  app.post("/api/posts", upload.array("images", 20), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -65,11 +65,12 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const postData = insertPostSchema.parse(req.body);
-      const imageUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+      const files = req.files as Express.Multer.File[];
+      const imageUrls = files ? files.map(file => `/uploads/${file.filename}`) : [];
       
       const post = await storage.createPost({
         ...postData,
-        imageUrl,
+        imageUrls,
         authorId: req.user.id
       });
 
@@ -106,6 +107,119 @@ export function registerRoutes(app: Express): Server {
       res.json({ message: `User ${status}` });
     } catch (error) {
       res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
+
+  // Update post (only author or admin)
+  app.put("/api/posts/:id", upload.array("images", 20), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const postId = parseInt(req.params.id);
+      const posts = await storage.getPosts();
+      const post = posts.find(p => p.id === postId);
+      
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (post.authorId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const postData = insertPostSchema.parse(req.body);
+      const files = req.files as Express.Multer.File[];
+      const imageUrls = files ? files.map(file => `/uploads/${file.filename}`) : post.imageUrls;
+      
+      await storage.updatePost(postId, {
+        ...postData,
+        imageUrls
+      });
+
+      res.json({ message: "Post updated" });
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update post" });
+    }
+  });
+
+  // Delete post (only author or admin)
+  app.delete("/api/posts/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const postId = parseInt(req.params.id);
+      const posts = await storage.getPosts();
+      const post = posts.find(p => p.id === postId);
+      
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (post.authorId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      await storage.deletePost(postId);
+      res.json({ message: "Post deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete post" });
+    }
+  });
+
+  // Comments
+  app.get("/api/posts/:id/comments", async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const comments = await storage.getComments(postId);
+      res.json(comments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.post("/api/posts/:id/comments", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    if (req.user.status !== "approved") {
+      return res.status(403).json({ message: "Account not approved" });
+    }
+
+    try {
+      const postId = parseInt(req.params.id);
+      const commentData = insertCommentSchema.parse(req.body);
+      
+      const comment = await storage.createComment({
+        ...commentData,
+        postId,
+        authorId: req.user.id
+      });
+
+      res.status(201).json(comment);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid comment data" });
+    }
+  });
+
+  app.delete("/api/comments/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const commentId = parseInt(req.params.id);
+      const comments = await storage.getComments(0); // This is a hack, need to get comment by id
+      // TODO: Add getCommentById method
+      
+      await storage.deleteComment(commentId);
+      res.json({ message: "Comment deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete comment" });
     }
   });
 

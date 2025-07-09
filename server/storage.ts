@@ -1,4 +1,4 @@
-import { users, posts, type User, type InsertUser, type Post, type InsertPost, type PostWithAuthor } from "@shared/schema";
+import { users, posts, comments, type User, type InsertUser, type Post, type InsertPost, type PostWithAuthor, type Comment, type InsertComment, type CommentWithAuthor } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, like } from "drizzle-orm";
 import session from "express-session";
@@ -16,7 +16,12 @@ export interface IStorage {
   
   createPost(post: InsertPost & { authorId: number }): Promise<Post>;
   getPosts(filters?: { region?: string; subject?: string; targetGrade?: string }): Promise<PostWithAuthor[]>;
+  updatePost(id: number, post: Partial<InsertPost>): Promise<void>;
   deletePost(id: number): Promise<void>;
+  
+  createComment(comment: InsertComment & { authorId: number }): Promise<Comment>;
+  getComments(postId: number): Promise<CommentWithAuthor[]>;
+  deleteComment(id: number): Promise<void>;
   
   sessionStore: session.Store;
 }
@@ -77,7 +82,7 @@ export class DatabaseStorage implements IStorage {
       if (filters.targetGrade) conditions.push(eq(posts.targetGrade, filters.targetGrade));
       
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        query = query.where(and(...conditions)) as any;
       }
     }
 
@@ -88,8 +93,36 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async updatePost(id: number, post: Partial<InsertPost>): Promise<void> {
+    await db.update(posts).set(post).where(eq(posts.id, id));
+  }
+
   async deletePost(id: number): Promise<void> {
     await db.delete(posts).where(eq(posts.id, id));
+  }
+
+  async createComment(comment: InsertComment & { authorId: number }): Promise<Comment> {
+    const [newComment] = await db
+      .insert(comments)
+      .values(comment)
+      .returning();
+    return newComment;
+  }
+
+  async getComments(postId: number): Promise<CommentWithAuthor[]> {
+    const results = await db.select().from(comments)
+      .leftJoin(users, eq(comments.authorId, users.id))
+      .where(eq(comments.postId, postId))
+      .orderBy(comments.createdAt);
+    
+    return results.map(result => ({
+      ...result.comments,
+      author: result.users!
+    }));
+  }
+
+  async deleteComment(id: number): Promise<void> {
+    await db.delete(comments).where(eq(comments.id, id));
   }
 }
 

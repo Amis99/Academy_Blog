@@ -26,7 +26,7 @@ export default function PostModal({ onClose }: PostModalProps) {
     subject: "",
     targetGrade: "",
   });
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const provinces = {
     "서울특별시": ["강남구", "서초구", "송파구", "마포구", "종로구", "중구", "용산구", "강서구", "노원구", "은평구"],
@@ -92,9 +92,9 @@ export default function PostModal({ onClose }: PostModalProps) {
     data.append("subject", formData.subject);
     data.append("targetGrade", formData.targetGrade);
     
-    if (imageFile) {
-      data.append("image", imageFile);
-    }
+    imageFiles.forEach((file) => {
+      data.append("images", file);
+    });
 
     createPostMutation.mutate(data);
   };
@@ -104,10 +104,20 @@ export default function PostModal({ onClose }: PostModalProps) {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 20) {
+      toast({
+        title: "파일 개수 초과",
+        description: "최대 20개의 이미지만 업로드 가능합니다.",
+        variant: "destructive",
+      });
+      return;
     }
+    setImageFiles(files);
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -203,13 +213,14 @@ export default function PostModal({ onClose }: PostModalProps) {
           </div>
           
           <div>
-            <Label htmlFor="image">이미지 업로드</Label>
+            <Label htmlFor="image">이미지 업로드 (최대 20개)</Label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-              <p className="text-gray-500 mb-2">이미지를 선택하세요</p>
+              <p className="text-gray-500 mb-2">이미지를 선택하세요 (최대 20개)</p>
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageChange}
                 className="hidden"
                 id="imageInput"
@@ -221,10 +232,27 @@ export default function PostModal({ onClose }: PostModalProps) {
               >
                 파일 선택
               </Button>
-              {imageFile && (
-                <p className="text-sm text-gray-600 mt-2">
-                  선택된 파일: {imageFile.name}
-                </p>
+              {imageFiles.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    선택된 파일: {imageFiles.length}개
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                    {imageFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                        <span className="truncate">{file.name}</span>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => removeImage(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>

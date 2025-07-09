@@ -3,7 +3,7 @@ import { PostWithAuthor } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, Heart, Share2, GraduationCap, BookOpen, FlaskConical, ChevronDown, ChevronUp, Music, Palette, Dumbbell } from "lucide-react";
+import { Eye, Heart, Share2, GraduationCap, BookOpen, FlaskConical, ChevronDown, ChevronUp, Music, Palette, Dumbbell, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PostCardProps {
@@ -44,6 +44,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { toast } = useToast();
   
   const IconComponent = subjectIcons[post.subject as keyof typeof subjectIcons] || GraduationCap;
@@ -73,6 +74,21 @@ export default function PostCard({ post }: PostCardProps) {
       });
     }
   };
+
+  const nextImage = () => {
+    if (post.imageUrls && post.imageUrls.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % post.imageUrls.length);
+    }
+  };
+
+  const prevImage = () => {
+    if (post.imageUrls && post.imageUrls.length > 0) {
+      setCurrentImageIndex((prev) => (prev - 1 + post.imageUrls.length) % post.imageUrls.length);
+    }
+  };
+
+  const hasImages = post.imageUrls && post.imageUrls.length > 0;
+  const hasMultipleImages = post.imageUrls && post.imageUrls.length > 1;
 
   const shouldShowExpand = post.content.length > 150;
   const displayContent = shouldShowExpand && !isExpanded 
@@ -132,14 +148,41 @@ export default function PostCard({ post }: PostCardProps) {
           )}
         </div>
 
-        {post.imageUrl && (
-          <div className="mb-4">
+        {hasImages && (
+          <div className="mb-4 relative">
             <img 
-              src={post.imageUrl} 
+              src={post.imageUrls[currentImageIndex]} 
               alt={post.title}
               className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => setIsImageModalOpen(true)}
             />
+            {hasMultipleImages && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                  {post.imageUrls.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`w-2 h-2 rounded-full ${
+                        index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -175,14 +218,50 @@ export default function PostCard({ post }: PostCardProps) {
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{post.title}</DialogTitle>
+            <DialogTitle>
+              {post.title}
+              {hasMultipleImages && (
+                <span className="text-sm text-gray-500 ml-2">
+                  ({currentImageIndex + 1} / {post.imageUrls.length})
+                </span>
+              )}
+            </DialogTitle>
           </DialogHeader>
-          {post.imageUrl && (
-            <img 
-              src={post.imageUrl} 
-              alt={post.title}
-              className="w-full h-auto rounded-lg"
-            />
+          {hasImages && (
+            <div className="relative">
+              <img 
+                src={post.imageUrls[currentImageIndex]} 
+                alt={post.title}
+                className="w-full h-auto rounded-lg"
+              />
+              {hasMultipleImages && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-75 transition-opacity"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-75 transition-opacity"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                    {post.imageUrls.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`w-3 h-3 rounded-full ${
+                          index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
