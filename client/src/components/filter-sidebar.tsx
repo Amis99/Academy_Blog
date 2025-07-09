@@ -9,22 +9,26 @@ interface FilterSidebarProps {
 }
 
 export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
-  const [region, setRegion] = useState("");
-  const [subject, setSubject] = useState("");
-  const [targetGrade, setTargetGrade] = useState("");
+  const [region, setRegion] = useState("all");
+  const [subject, setSubject] = useState("all");
+  const [targetGrade, setTargetGrade] = useState("all");
 
   const regions = ["강남구", "서초구", "송파구", "마포구", "종로구", "중구", "용산구"];
   const subjects = ["수학", "영어", "국어", "과학", "사회"];
   const grades = ["초등학생", "중학생", "고등학생", "재수생"];
 
   const handleApplyFilters = () => {
-    onFilterChange({ region, subject, targetGrade });
+    onFilterChange({ 
+      region: region === "all" ? "" : region, 
+      subject: subject === "all" ? "" : subject, 
+      targetGrade: targetGrade === "all" ? "" : targetGrade 
+    });
   };
 
   const handleResetFilters = () => {
-    setRegion("");
-    setSubject("");
-    setTargetGrade("");
+    setRegion("all");
+    setSubject("all");
+    setTargetGrade("all");
     onFilterChange({ region: "", subject: "", targetGrade: "" });
   };
 
@@ -44,7 +48,7 @@ export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
               <SelectValue placeholder="전체 지역" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">전체 지역</SelectItem>
+              <SelectItem value="all">전체 지역</SelectItem>
               {regions.map((r) => (
                 <SelectItem key={r} value={r}>{r}</SelectItem>
               ))}
@@ -59,7 +63,7 @@ export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
               <SelectValue placeholder="전체 과목" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">전체 과목</SelectItem>
+              <SelectItem value="all">전체 과목</SelectItem>
               {subjects.map((s) => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
@@ -74,7 +78,7 @@ export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
               <SelectValue placeholder="전체 학년" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">전체 학년</SelectItem>
+              <SelectItem value="all">전체 학년</SelectItem>
               {grades.map((g) => (
                 <SelectItem key={g} value={g}>{g}</SelectItem>
               ))}
