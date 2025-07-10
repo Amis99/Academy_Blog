@@ -7,6 +7,8 @@ import PostCard from "@/components/post-card";
 import PostModal from "@/components/post-modal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 
 export default function HomePage() {
   const [showPostModal, setShowPostModal] = useState(false);
@@ -15,6 +17,8 @@ export default function HomePage() {
     subject: "",
     targetGrade: ""
   });
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   const { data: posts, isLoading } = useQuery<PostWithAuthor[]>({
     queryKey: ["/api/posts", filters],
@@ -33,6 +37,14 @@ export default function HomePage() {
     setFilters(newFilters);
   };
 
+  const handlePostButtonClick = () => {
+    if (!user) {
+      setLocation("/auth");
+      return;
+    }
+    setShowPostModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -44,11 +56,11 @@ export default function HomePage() {
             
             <div className="mt-6">
               <Button 
-                onClick={() => setShowPostModal(true)}
+                onClick={handlePostButtonClick}
                 className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 font-medium"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                광고 등록
+                {user ? "광고 등록" : "로그인 후 광고 등록"}
               </Button>
             </div>
           </aside>
@@ -88,7 +100,7 @@ export default function HomePage() {
         </div>
       </main>
 
-      {showPostModal && (
+      {showPostModal && user && (
         <PostModal onClose={() => setShowPostModal(false)} />
       )}
     </div>

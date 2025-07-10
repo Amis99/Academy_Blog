@@ -13,9 +13,9 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={HomePage} />
+      <Route path="/" component={HomePage} />
       <Route path="/auth" component={AuthPage} />
-      <Route path="/admin" component={AdminPage} />
+      <ProtectedRoute path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );
