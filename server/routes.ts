@@ -28,8 +28,42 @@ const upload = multer({ storage: storage_config });
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Serve uploaded images
-  app.use("/uploads", express.static(uploadsDir));
+  // Serve uploaded images as base64 data URLs
+  app.get("/api/image/:filename", (req, res) => {
+    const filename = req.params.filename;
+    const filepath = path.join(uploadsDir, filename);
+    
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ message: "File not found" });
+    }
+    
+    try {
+      const imageBuffer = fs.readFileSync(filepath);
+      const ext = path.extname(filename).toLowerCase();
+      let mimeType = 'application/octet-stream';
+      
+      switch (ext) {
+        case '.jpg':
+        case '.jpeg':
+          mimeType = 'image/jpeg';
+          break;
+        case '.png':
+          mimeType = 'image/png';
+          break;
+        case '.gif':
+          mimeType = 'image/gif';
+          break;
+        case '.webp':
+          mimeType = 'image/webp';
+          break;
+      }
+      
+      const base64Image = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+      res.json({ dataUrl: base64Image });
+    } catch (error) {
+      res.status(500).json({ message: "Error reading image file" });
+    }
+  });
 
   // Get posts with optional filters
   app.get("/api/posts", async (req, res) => {

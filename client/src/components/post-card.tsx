@@ -45,10 +45,37 @@ export default function PostCard({ post }: PostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([]);
   const { toast } = useToast();
   
   const IconComponent = subjectIcons[post.subject as keyof typeof subjectIcons] || GraduationCap;
   const iconColor = subjectColors[post.subject as keyof typeof subjectColors] || "bg-gray-500";
+
+  // Load image data URLs when component mounts
+  useEffect(() => {
+    if (post.imageUrls && post.imageUrls.length > 0) {
+      const loadImages = async () => {
+        const dataUrls = await Promise.all(
+          post.imageUrls.map(async (url) => {
+            try {
+              const filename = url.split('/').pop();
+              const response = await fetch(`/api/image/${filename}`);
+              if (response.ok) {
+                const data = await response.json();
+                return data.dataUrl;
+              }
+              return url; // fallback to original URL
+            } catch (error) {
+              console.error('Error loading image:', error);
+              return url; // fallback to original URL
+            }
+          })
+        );
+        setImageDataUrls(dataUrls);
+      };
+      loadImages();
+    }
+  }, [post.imageUrls]);
 
   // Get like status
   const { data: likeStatus } = useQuery({
@@ -115,6 +142,7 @@ export default function PostCard({ post }: PostCardProps) {
 
   const hasImages = post.imageUrls && post.imageUrls.length > 0;
   const hasMultipleImages = post.imageUrls && post.imageUrls.length > 1;
+  const displayImages = imageDataUrls.length > 0 ? imageDataUrls : post.imageUrls;
 
   const shouldShowExpand = post.content.length > 150;
   const displayContent = shouldShowExpand && !isExpanded 
@@ -174,10 +202,10 @@ export default function PostCard({ post }: PostCardProps) {
           )}
         </div>
 
-        {hasImages && (
+        {hasImages && displayImages && (
           <div className="mb-4 relative">
             <img 
-              src={post.imageUrls[currentImageIndex]} 
+              src={displayImages[currentImageIndex]} 
               alt={post.title}
               className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => setIsImageModalOpen(true)}
@@ -197,7 +225,7 @@ export default function PostCard({ post }: PostCardProps) {
                   <ChevronRight className="w-5 h-5" />
                 </button>
                 <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {post.imageUrls.map((_, index) => (
+                  {displayImages.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
@@ -248,15 +276,15 @@ export default function PostCard({ post }: PostCardProps) {
               {post.title}
               {hasMultipleImages && (
                 <span className="text-sm text-gray-500 ml-2">
-                  ({currentImageIndex + 1} / {post.imageUrls.length})
+                  ({currentImageIndex + 1} / {displayImages.length})
                 </span>
               )}
             </DialogTitle>
           </DialogHeader>
-          {hasImages && (
+          {hasImages && displayImages && (
             <div className="relative">
               <img 
-                src={post.imageUrls[currentImageIndex]} 
+                src={displayImages[currentImageIndex]} 
                 alt={post.title}
                 className="w-full h-auto rounded-lg"
               />
@@ -275,7 +303,7 @@ export default function PostCard({ post }: PostCardProps) {
                     <ChevronRight className="w-6 h-6" />
                   </button>
                   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                    {post.imageUrls.map((_, index) => (
+                    {displayImages.map((_, index) => (
                       <button
                         key={index}
                         onClick={() => setCurrentImageIndex(index)}
