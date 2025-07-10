@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { Comment, insertCommentSchema } from "@shared/schema";
+import { Comment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { MessageCircle, Trash2, User } from "lucide-react";
 import { z } from "zod";
 
-const commentFormSchema = insertCommentSchema.extend({
+const commentFormSchema = z.object({
   authorName: z.string().min(1, "이름을 입력해주세요"),
   authorPassword: z.string().min(4, "비밀번호는 4자 이상이어야 합니다"),
   content: z.string().min(1, "댓글 내용을 입력해주세요"),
