@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a full-stack web application built with React (frontend) and Express.js (backend) that serves as a tutoring marketplace platform called "학원광장" (Academy Square). The application allows tutors to create posts advertising their services, with features for user authentication, admin approval, and content filtering.
+This is a full-stack web application built with React (frontend) and Express.js (backend) that serves as a tutoring marketplace platform called "학원광장" (Academy Square). The application allows tutors to create posts advertising their services, with features for user authentication, admin approval, content filtering, anonymous commenting, and persistent like system.
 
 ## User Preferences
 
@@ -45,26 +45,33 @@ Preferred communication style: Simple, everyday language.
 
 ### Post Management
 - Users can create posts with title, content, region, subject, and target grade
-- Image upload support for posts
+- Multiple image upload support (up to 20 images per post)
+- Image carousel navigation with modal view
 - Filtering by region, subject, and target grade
+- Persistent like system with IP-based tracking
 - Admin can delete posts
 
 ### Admin Panel
 - Approve/reject pending user registrations
 - View and manage all posts
-- User management capabilities
+- Comprehensive user management with ban/unban functionality
+- Delete posts and comments
 
 ### Database Schema
-- **Users**: id, username, password, phone, status, isAdmin, createdAt
-- **Posts**: id, title, content, region, subject, targetGrade, imageUrl, authorId, createdAt
-- Relationships: Posts belong to Users (one-to-many)
+- **Users**: id, username, password, phone, status, isAdmin, bannedAt, bannedBy, banReason, createdAt
+- **Posts**: id, title, content, region, subject, targetGrade, imageUrls (array), authorId, likesCount, createdAt
+- **Comments**: id, content, postId, authorName, authorPassword, createdAt
+- **Likes**: id, postId, userIp, createdAt
+- Relationships: Posts belong to Users (one-to-many), Comments belong to Posts (one-to-many), Likes belong to Posts (one-to-many)
 
 ## Data Flow
 
 1. **User Registration**: New users register → status set to "pending" → admin approval required
 2. **Post Creation**: Authenticated users create posts → stored with author reference → immediately visible
 3. **Filtering**: Frontend sends query parameters → backend filters posts → returns filtered results
-4. **File Upload**: Images uploaded to `/uploads` directory → file path stored in database
+4. **File Upload**: Multiple images uploaded to `/uploads` directory → file paths stored in database array
+5. **Anonymous Comments**: Users can comment without registration using name and password
+6. **Like System**: IP-based likes stored in database → persistent across sessions
 
 ## External Dependencies
 
@@ -110,4 +117,14 @@ Preferred communication style: Simple, everyday language.
 - Migrations stored in `./migrations` directory
 - Schema defined in `shared/schema.ts`
 
-The application follows a monorepo structure with shared TypeScript types between frontend and backend, enabling type safety across the full stack. The authentication system requires admin approval for new users, making it suitable for a curated tutoring marketplace.
+## Recent Changes (Latest Updates)
+
+- **December 2024**: Added persistent like system with IP-based tracking
+- **December 2024**: Implemented anonymous comment system with name/password authentication
+- **December 2024**: Added multiple image upload support (up to 20 images per post)
+- **December 2024**: Enhanced admin panel with comprehensive user management and ban/unban functionality
+- **December 2024**: Fixed React runtime errors and hook ordering issues
+- **December 2024**: Removed view count display as requested
+- **December 2024**: Added image carousel navigation with modal view
+
+The application follows a monorepo structure with shared TypeScript types between frontend and backend, enabling type safety across the full stack. The authentication system requires admin approval for new users, making it suitable for a curated tutoring marketplace with anonymous interaction capabilities.
