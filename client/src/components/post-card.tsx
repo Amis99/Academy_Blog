@@ -150,8 +150,8 @@ export default function PostCard({ post }: PostCardProps) {
         </div>
 
         <h4 className="text-lg font-semibold text-gray-900 mb-3">{post.title}</h4>
-        <div className="text-gray-600 mb-4">
-          <p>{displayContent}</p>
+        <div className="text-gray-600 mb-4 whitespace-pre-wrap">
+          <p className="whitespace-pre-wrap leading-relaxed">{displayContent}</p>
           {shouldShowExpand && (
             <Button 
               variant="ghost" 
