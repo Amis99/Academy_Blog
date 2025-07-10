@@ -22,11 +22,6 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
 
-  if (!user || !user.isAdmin) {
-    navigate("/");
-    return null;
-  }
-
   const { data: pendingUsers, isLoading: pendingUsersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/pending-users"],
   });
@@ -42,6 +37,12 @@ export default function AdminPage() {
   const { data: posts, isLoading: postsLoading } = useQuery<PostWithAuthor[]>({
     queryKey: ["/api/posts"],
   });
+
+  // Check auth after all hooks are called
+  if (!user || !user.isAdmin) {
+    navigate("/");
+    return null;
+  }
 
   const approveUserMutation = useMutation({
     mutationFn: async ({ userId, status }: { userId: number; status: string }) => {

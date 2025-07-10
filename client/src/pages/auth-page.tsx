@@ -27,12 +27,6 @@ export default function AuthPage() {
   const [, navigate] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if already logged in
-  if (user) {
-    navigate("/");
-    return null;
-  }
-
   const loginForm = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -50,6 +44,12 @@ export default function AuthPage() {
       phone: ""
     }
   });
+
+  // Redirect if already logged in - after all hooks are called
+  if (user) {
+    navigate("/");
+    return null;
+  }
 
   const handleLogin = async (data: z.infer<typeof loginSchema>) => {
     setIsSubmitting(true);
