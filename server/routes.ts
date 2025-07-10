@@ -28,42 +28,28 @@ const upload = multer({ storage: storage_config });
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Serve uploaded images as base64 data URLs
-  app.get("/api/image/:filename", (req, res) => {
-    const filename = req.params.filename;
-    const filepath = path.join(uploadsDir, filename);
-    
-    if (!fs.existsSync(filepath)) {
-      return res.status(404).json({ message: "File not found" });
-    }
-    
-    try {
-      const imageBuffer = fs.readFileSync(filepath);
-      const ext = path.extname(filename).toLowerCase();
-      let mimeType = 'application/octet-stream';
-      
+  // Serve uploaded images as static files
+  app.use("/uploads", express.static(uploadsDir, {
+    maxAge: '1d',
+    setHeaders: (res, path) => {
+      const ext = path.split('.').pop()?.toLowerCase();
       switch (ext) {
-        case '.jpg':
-        case '.jpeg':
-          mimeType = 'image/jpeg';
+        case 'jpg':
+        case 'jpeg':
+          res.setHeader('Content-Type', 'image/jpeg');
           break;
-        case '.png':
-          mimeType = 'image/png';
+        case 'png':
+          res.setHeader('Content-Type', 'image/png');
           break;
-        case '.gif':
-          mimeType = 'image/gif';
+        case 'gif':
+          res.setHeader('Content-Type', 'image/gif');
           break;
-        case '.webp':
-          mimeType = 'image/webp';
+        case 'webp':
+          res.setHeader('Content-Type', 'image/webp');
           break;
       }
-      
-      const base64Image = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
-      res.json({ dataUrl: base64Image });
-    } catch (error) {
-      res.status(500).json({ message: "Error reading image file" });
     }
-  });
+  }));
 
   // Get posts with optional filters
   app.get("/api/posts", async (req, res) => {
