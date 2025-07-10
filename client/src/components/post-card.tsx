@@ -175,39 +175,31 @@ export default function PostCard({ post }: PostCardProps) {
         </div>
 
         {hasImages && (
-          <div className="mb-4 relative">
-            <img 
-              src={post.imageUrls[currentImageIndex]} 
-              alt={post.title}
-              className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => setIsImageModalOpen(true)}
-            />
-            {hasMultipleImages && (
-              <>
-                <button
-                  onClick={prevImage}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={nextImage}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {post.imageUrls.map((_, index) => (
-                    <button
+          <div className="mb-4">
+            {hasMultipleImages ? (
+              <div className="overflow-x-auto">
+                <div className="flex space-x-2 pb-2">
+                  {post.imageUrls.map((imageUrl, index) => (
+                    <img
                       key={index}
-                      onClick={() => setCurrentImageIndex(index)}
-                      className={`w-2 h-2 rounded-full ${
-                        index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'
-                      }`}
+                      src={imageUrl}
+                      alt={`${post.title} - ${index + 1}`}
+                      className="flex-shrink-0 w-64 h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => {
+                        setCurrentImageIndex(index);
+                        setIsImageModalOpen(true);
+                      }}
                     />
                   ))}
                 </div>
-              </>
+              </div>
+            ) : (
+              <img 
+                src={post.imageUrls[0]} 
+                alt={post.title}
+                className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setIsImageModalOpen(true)}
+              />
             )}
           </div>
         )}
