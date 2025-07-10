@@ -170,6 +170,20 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Delete old posts (admin only)
+  app.delete("/api/posts/cleanup/old", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    try {
+      const deletedCount = await storage.deleteOldPosts();
+      res.json({ message: `Deleted ${deletedCount} old posts` });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete old posts" });
+    }
+  });
+
   // Comments
   app.get("/api/posts/:id/comments", async (req, res) => {
     try {

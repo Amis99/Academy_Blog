@@ -129,6 +129,26 @@ export default function AdminPage() {
     },
   });
 
+  const cleanupOldPostsMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", "/api/posts/cleanup/old");
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      toast({
+        title: "성공",
+        description: `3일 이전 게시글이 삭제되었습니다.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "오류",
+        description: "오래된 게시글 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleBanUser = (user: User) => {
     setSelectedUser(user);
     setIsBanDialogOpen(true);
@@ -351,9 +371,20 @@ export default function AdminPage() {
           <TabsContent value="posts">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="w-5 h-5" />
-                  <span>게시글 관리</span>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-5 h-5" />
+                    <span>게시글 관리</span>
+                  </div>
+                  <Button
+                    onClick={() => cleanupOldPostsMutation.mutate()}
+                    disabled={cleanupOldPostsMutation.isPending}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    3일 이전 게시글 정리
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
