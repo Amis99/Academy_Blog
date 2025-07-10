@@ -23,10 +23,10 @@ const storage_config = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename using UUID
+    // Generate temporary filename using UUID (will be renamed after post creation)
     const fileExtension = path.extname(file.originalname).toLowerCase();
-    const uniqueFilename = `${uuidv4()}${fileExtension}`;
-    cb(null, uniqueFilename);
+    const tempFilename = `temp_${uuidv4()}${fileExtension}`;
+    cb(null, tempFilename);
   }
 });
 
@@ -113,24 +113,39 @@ export function registerRoutes(app: Express): Server {
       const postData = insertPostSchema.parse(req.body);
       const files = req.files as Express.Multer.File[];
       
-      // Verify all uploaded files exist and generate safe URLs
-      const imageUrls: string[] = [];
-      if (files && files.length > 0) {
-        for (const file of files) {
-          const filePath = path.join(uploadsDir, file.filename);
-          if (fs.existsSync(filePath)) {
-            imageUrls.push(`/uploads/${file.filename}`);
-          } else {
-            console.error(`File not found: ${filePath}`);
-          }
-        }
-      }
-      
+      // First create the post to get the post ID
       const post = await storage.createPost({
         ...postData,
-        imageUrls,
+        imageUrls: [], // Will be updated after file renaming
         authorId: req.user.id
       });
+      
+      // Rename uploaded files to include post ID and update post with final URLs
+      const imageUrls: string[] = [];
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const tempFilePath = path.join(uploadsDir, file.filename);
+          
+          if (fs.existsSync(tempFilePath)) {
+            const fileExtension = path.extname(file.originalname).toLowerCase();
+            const finalFilename = `post${post.id}_${i + 1}_${uuidv4()}${fileExtension}`;
+            const finalFilePath = path.join(uploadsDir, finalFilename);
+            
+            // Rename the temp file to final filename
+            fs.renameSync(tempFilePath, finalFilePath);
+            imageUrls.push(`/uploads/${finalFilename}`);
+          } else {
+            console.error(`Temp file not found: ${tempFilePath}`);
+          }
+        }
+        
+        // Update post with final image URLs
+        if (imageUrls.length > 0) {
+          await storage.updatePost(post.id, { imageUrls });
+          post.imageUrls = imageUrls;
+        }
+      }
 
       res.status(201).json(post);
     } catch (error) {
