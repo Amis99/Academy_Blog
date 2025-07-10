@@ -183,6 +183,17 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ message: "Not authorized" });
       }
 
+      // Delete associated image files
+      if (post.imageUrls && post.imageUrls.length > 0) {
+        post.imageUrls.forEach(imageUrl => {
+          const filename = imageUrl.replace('/uploads/', '');
+          const filepath = path.join(uploadsDir, filename);
+          if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+          }
+        });
+      }
+
       await storage.deletePost(postId);
       res.json({ message: "Post deleted" });
     } catch (error) {

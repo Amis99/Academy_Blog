@@ -4,6 +4,8 @@ import { eq, desc, and, like, sql, gte } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import fs from 'fs';
+import path from 'path';
 
 const PostgresSessionStore = connectPg(session);
 
@@ -143,6 +145,24 @@ export class DatabaseStorage implements IStorage {
   async deleteOldPosts(): Promise<number> {
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    
+    // Get old posts with their image URLs before deleting
+    const oldPosts = await db.select()
+      .from(posts)
+      .where(sql`${posts.createdAt} < ${threeDaysAgo}`);
+    
+    // Delete associated image files
+    for (const post of oldPosts) {
+      if (post.imageUrls && post.imageUrls.length > 0) {
+        post.imageUrls.forEach(imageUrl => {
+          const filename = imageUrl.replace('/uploads/', '');
+          const filepath = path.join(process.cwd(), 'uploads', filename);
+          if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+          }
+        });
+      }
+    }
     
     const deletedPosts = await db.delete(posts)
       .where(sql`${posts.createdAt} < ${threeDaysAgo}`)
