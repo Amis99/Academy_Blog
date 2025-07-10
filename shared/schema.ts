@@ -25,6 +25,7 @@ export const posts = pgTable("posts", {
   targetGrade: text("target_grade").notNull(),
   imageUrls: text("image_urls").array(),
   authorId: integer("author_id").notNull(),
+  likesCount: integer("likes_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -37,17 +38,32 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const likes = pgTable("likes", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull(),
+  userIp: text("user_ip").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const postsRelations = relations(posts, ({ one, many }) => ({
   author: one(users, {
     fields: [posts.authorId],
     references: [users.id],
   }),
   comments: many(comments),
+  likes: many(likes),
 }));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
   post: one(posts, {
     fields: [comments.postId],
+    references: [posts.id],
+  }),
+}));
+
+export const likesRelations = relations(likes, ({ one }) => ({
+  post: one(posts, {
+    fields: [likes.postId],
     references: [posts.id],
   }),
 }));
@@ -87,3 +103,4 @@ export type Post = typeof posts.$inferSelect;
 export type PostWithAuthor = Post & { author: User };
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Comment = typeof comments.$inferSelect;
+export type Like = typeof likes.$inferSelect;

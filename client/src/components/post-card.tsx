@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PostWithAuthor } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, Heart, Share2, GraduationCap, BookOpen, FlaskConical, ChevronDown, ChevronUp, Music, Palette, Dumbbell, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, Share2, GraduationCap, BookOpen, FlaskConical, ChevronDown, ChevronUp, Music, Palette, Dumbbell, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import CommentSection from "./comment-section";
 
 interface PostCardProps {
@@ -41,9 +43,6 @@ const subjectColors = {
 
 export default function PostCard({ post }: PostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
-  const [viewCount, setViewCount] = useState(0);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { toast } = useToast();
@@ -51,13 +50,39 @@ export default function PostCard({ post }: PostCardProps) {
   const IconComponent = subjectIcons[post.subject as keyof typeof subjectIcons] || GraduationCap;
   const iconColor = subjectColors[post.subject as keyof typeof subjectColors] || "bg-gray-500";
 
+  // Get like status
+  const { data: likeStatus } = useQuery({
+    queryKey: ["/api/posts", post.id, "like-status"],
+    queryFn: async () => {
+      const response = await fetch(`/api/posts/${post.id}/like-status`);
+      return response.json();
+    },
+  });
+
+  // Like/Unlike mutation
+  const likeMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/posts/${post.id}/like`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "like-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      toast({
+        title: likeStatus?.liked ? "좋아요 취소" : "좋아요!",
+        description: likeStatus?.liked ? "좋아요를 취소했습니다." : "게시글에 좋아요를 눌렀습니다.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "오류",
+        description: "좋아요 처리에 실패했습니다.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-    toast({
-      title: isLiked ? "좋아요 취소" : "좋아요!",
-      description: isLiked ? "좋아요를 취소했습니다." : "게시글에 좋아요를 눌렀습니다.",
-    });
+    likeMutation.mutate();
   };
 
   const handleShare = () => {
@@ -189,18 +214,15 @@ export default function PostCard({ post }: PostCardProps) {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4 text-sm text-gray-500">
-            <span className="flex items-center">
-              <Eye className="w-4 h-4 mr-1" />
-              {viewCount}
-            </span>
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={handleLike}
-              className={`flex items-center space-x-1 p-0 h-auto ${isLiked ? 'text-red-500' : 'text-gray-500'} hover:text-red-500`}
+              disabled={likeMutation.isPending}
+              className={`flex items-center space-x-1 p-0 h-auto ${likeStatus?.liked ? 'text-red-500' : 'text-gray-500'} hover:text-red-500`}
             >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-              <span>{likeCount}</span>
+              <Heart className={`w-4 h-4 ${likeStatus?.liked ? 'fill-current' : ''}`} />
+              <span>{post.likesCount || 0}</span>
             </Button>
           </div>
           <Button 

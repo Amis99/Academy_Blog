@@ -258,6 +258,38 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Like/Unlike routes
+  app.post("/api/posts/:id/like", async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const userIp = req.ip || req.connection.remoteAddress || "unknown";
+      
+      const hasLiked = await storage.hasUserLiked(postId, userIp);
+      
+      if (hasLiked) {
+        await storage.unlikePost(postId, userIp);
+        res.json({ message: "Post unliked", liked: false });
+      } else {
+        await storage.likePost(postId, userIp);
+        res.json({ message: "Post liked", liked: true });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to toggle like" });
+    }
+  });
+
+  app.get("/api/posts/:id/like-status", async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const userIp = req.ip || req.connection.remoteAddress || "unknown";
+      
+      const hasLiked = await storage.hasUserLiked(postId, userIp);
+      res.json({ liked: hasLiked });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get like status" });
+    }
+  });
+
   // User management routes
   app.get("/api/admin/users", async (req, res) => {
     if (!req.isAuthenticated() || !req.user.isAdmin) {

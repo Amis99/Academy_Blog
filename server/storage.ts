@@ -1,6 +1,6 @@
-import { users, posts, comments, type User, type InsertUser, type Post, type InsertPost, type PostWithAuthor, type Comment, type InsertComment } from "@shared/schema";
+import { users, posts, comments, likes, type User, type InsertUser, type Post, type InsertPost, type PostWithAuthor, type Comment, type InsertComment, type Like } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, like } from "drizzle-orm";
+import { eq, desc, and, like, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -27,6 +27,10 @@ export interface IStorage {
   getComments(postId: number): Promise<Comment[]>;
   deleteComment(id: number, password: string): Promise<boolean>;
   verifyCommentPassword(id: number, password: string): Promise<boolean>;
+  
+  likePost(postId: number, userIp: string): Promise<void>;
+  unlikePost(postId: number, userIp: string): Promise<void>;
+  hasUserLiked(postId: number, userIp: string): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -162,6 +166,45 @@ export class DatabaseStorage implements IStorage {
     if (!comment) return false;
     
     return comment.authorPassword === password;
+  }
+
+  async likePost(postId: number, userIp: string): Promise<void> {
+    // Check if user already liked this post
+    const existingLike = await db.select().from(likes)
+      .where(and(eq(likes.postId, postId), eq(likes.userIp, userIp)))
+      .limit(1);
+    
+    if (existingLike.length === 0) {
+      // Add like
+      await db.insert(likes).values({ postId, userIp });
+      
+      // Increment likes count in posts table
+      await db.update(posts)
+        .set({ likesCount: sql`likes_count + 1` })
+        .where(eq(posts.id, postId));
+    }
+  }
+
+  async unlikePost(postId: number, userIp: string): Promise<void> {
+    // Remove like
+    const deletedLikes = await db.delete(likes)
+      .where(and(eq(likes.postId, postId), eq(likes.userIp, userIp)))
+      .returning();
+    
+    if (deletedLikes.length > 0) {
+      // Decrement likes count in posts table
+      await db.update(posts)
+        .set({ likesCount: sql`likes_count - 1` })
+        .where(eq(posts.id, postId));
+    }
+  }
+
+  async hasUserLiked(postId: number, userIp: string): Promise<boolean> {
+    const existingLike = await db.select().from(likes)
+      .where(and(eq(likes.postId, postId), eq(likes.userIp, userIp)))
+      .limit(1);
+    
+    return existingLike.length > 0;
   }
 }
 
