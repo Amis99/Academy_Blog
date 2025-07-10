@@ -281,9 +281,29 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ message: "Not authorized" });
       }
 
+      // Delete associated images before deleting the post
+      if (post.imageUrls && post.imageUrls.length > 0) {
+        for (const imageUrl of post.imageUrls) {
+          try {
+            // Extract filename from URL (e.g., "/uploads/post1_1_uuid.jpg" -> "post1_1_uuid.jpg")
+            const filename = imageUrl.replace('/uploads/', '');
+            const filePath = path.join(uploadsDir, filename);
+            
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+              console.log(`Deleted image file: ${filename}`);
+            }
+          } catch (fileError) {
+            console.error(`Failed to delete image file ${imageUrl}:`, fileError);
+            // Continue with other files even if one fails
+          }
+        }
+      }
+
       await storage.deletePost(postId);
       res.json({ message: "Post deleted" });
     } catch (error) {
+      console.error("Post deletion error:", error);
       res.status(500).json({ message: "Failed to delete post" });
     }
   });
@@ -472,9 +492,36 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const postId = parseInt(req.params.id);
+      const posts = await storage.getPosts();
+      const post = posts.find(p => p.id === postId);
+      
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Delete associated images before deleting the post
+      if (post.imageUrls && post.imageUrls.length > 0) {
+        for (const imageUrl of post.imageUrls) {
+          try {
+            // Extract filename from URL (e.g., "/uploads/post1_1_uuid.jpg" -> "post1_1_uuid.jpg")
+            const filename = imageUrl.replace('/uploads/', '');
+            const filePath = path.join(uploadsDir, filename);
+            
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+              console.log(`Admin deleted image file: ${filename}`);
+            }
+          } catch (fileError) {
+            console.error(`Failed to delete image file ${imageUrl}:`, fileError);
+            // Continue with other files even if one fails
+          }
+        }
+      }
+
       await storage.deletePost(postId);
       res.json({ message: "Post deleted" });
     } catch (error) {
+      console.error("Admin post deletion error:", error);
       res.status(500).json({ message: "Failed to delete post" });
     }
   });
