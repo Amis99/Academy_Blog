@@ -32,7 +32,8 @@ export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
   postId: integer("post_id").references(() => posts.id).notNull(),
-  authorId: integer("author_id").references(() => users.id).notNull(),
+  authorName: text("author_name").notNull(),
+  authorPassword: text("author_password").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -49,15 +50,10 @@ export const commentsRelations = relations(comments, ({ one }) => ({
     fields: [comments.postId],
     references: [posts.id],
   }),
-  author: one(users, {
-    fields: [comments.authorId],
-    references: [users.id],
-  }),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
-  comments: many(comments),
 }));
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -75,7 +71,6 @@ export const insertPostSchema = createInsertSchema(posts).omit({
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
   id: true,
-  authorId: true,
   createdAt: true,
 });
 
@@ -91,4 +86,3 @@ export type Post = typeof posts.$inferSelect;
 export type PostWithAuthor = Post & { author: User };
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Comment = typeof comments.$inferSelect;
-export type CommentWithAuthor = Comment & { author: User };

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Eye, Heart, Share2, GraduationCap, BookOpen, FlaskConical, ChevronDown, ChevronUp, Music, Palette, Dumbbell, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CommentSection from "./comment-section";
 
 interface PostCardProps {
   post: PostWithAuthor;
@@ -213,6 +214,9 @@ export default function PostCard({ post }: PostCardProps) {
           </Button>
         </div>
       </div>
+
+      {/* Comment Section */}
+      <CommentSection postId={post.id} postAuthorId={post.authorId} />
 
       {/* Image Modal */}
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>

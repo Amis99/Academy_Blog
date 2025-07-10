@@ -1,4 +1,4 @@
-import { users, posts, comments, type User, type InsertUser, type Post, type InsertPost, type PostWithAuthor, type Comment, type InsertComment, type CommentWithAuthor } from "@shared/schema";
+import { users, posts, comments, type User, type InsertUser, type Post, type InsertPost, type PostWithAuthor, type Comment, type InsertComment } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, like } from "drizzle-orm";
 import session from "express-session";
@@ -23,9 +23,10 @@ export interface IStorage {
   updatePost(id: number, post: Partial<InsertPost>): Promise<void>;
   deletePost(id: number): Promise<void>;
   
-  createComment(comment: InsertComment & { authorId: number }): Promise<Comment>;
-  getComments(postId: number): Promise<CommentWithAuthor[]>;
-  deleteComment(id: number): Promise<void>;
+  createComment(comment: InsertComment): Promise<Comment>;
+  getComments(postId: number): Promise<Comment[]>;
+  deleteComment(id: number, password: string): Promise<boolean>;
+  verifyCommentPassword(id: number, password: string): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -131,7 +132,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(posts).where(eq(posts.id, id));
   }
 
-  async createComment(comment: InsertComment & { authorId: number }): Promise<Comment> {
+  async createComment(comment: InsertComment): Promise<Comment> {
     const [newComment] = await db
       .insert(comments)
       .values(comment)
@@ -139,20 +140,28 @@ export class DatabaseStorage implements IStorage {
     return newComment;
   }
 
-  async getComments(postId: number): Promise<CommentWithAuthor[]> {
-    const results = await db.select().from(comments)
-      .leftJoin(users, eq(comments.authorId, users.id))
+  async getComments(postId: number): Promise<Comment[]> {
+    return await db.select().from(comments)
       .where(eq(comments.postId, postId))
       .orderBy(comments.createdAt);
-    
-    return results.map(result => ({
-      ...result.comments,
-      author: result.users!
-    }));
   }
 
-  async deleteComment(id: number): Promise<void> {
+  async deleteComment(id: number, password: string): Promise<boolean> {
+    const [comment] = await db.select().from(comments).where(eq(comments.id, id));
+    if (!comment) return false;
+    
+    // Verify password before deleting
+    if (comment.authorPassword !== password) return false;
+    
     await db.delete(comments).where(eq(comments.id, id));
+    return true;
+  }
+
+  async verifyCommentPassword(id: number, password: string): Promise<boolean> {
+    const [comment] = await db.select().from(comments).where(eq(comments.id, id));
+    if (!comment) return false;
+    
+    return comment.authorPassword === password;
   }
 }
 

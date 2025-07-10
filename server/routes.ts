@@ -182,22 +182,13 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/posts/:id/comments", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    if (req.user.status !== "approved") {
-      return res.status(403).json({ message: "Account not approved" });
-    }
-
     try {
       const postId = parseInt(req.params.id);
       const commentData = insertCommentSchema.parse(req.body);
       
       const comment = await storage.createComment({
         ...commentData,
-        postId,
-        authorId: req.user.id
+        postId
       });
 
       res.status(201).json(comment);
@@ -207,16 +198,57 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.delete("/api/comments/:id", async (req, res) => {
+    try {
+      const commentId = parseInt(req.params.id);
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({ message: "Password is required" });
+      }
+
+      const deleted = await storage.deleteComment(commentId, password);
+      
+      if (!deleted) {
+        return res.status(403).json({ message: "Invalid password or comment not found" });
+      }
+      
+      res.json({ message: "Comment deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+
+  // Allow post authors to delete comments
+  app.delete("/api/posts/:postId/comments/:commentId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
     try {
-      const commentId = parseInt(req.params.id);
-      const comments = await storage.getComments(0); // This is a hack, need to get comment by id
-      // TODO: Add getCommentById method
+      const postId = parseInt(req.params.postId);
+      const commentId = parseInt(req.params.commentId);
       
-      await storage.deleteComment(commentId);
+      // Check if user is the post author
+      const posts = await storage.getPosts();
+      const post = posts.find(p => p.id === postId);
+      
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (post.authorId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Only post authors and admins can delete comments" });
+      }
+
+      // Force delete comment (bypass password check)
+      const comments = await storage.getComments(postId);
+      const comment = comments.find(c => c.id === commentId);
+      
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      await storage.deleteComment(commentId, comment.authorPassword);
       res.json({ message: "Comment deleted" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete comment" });
