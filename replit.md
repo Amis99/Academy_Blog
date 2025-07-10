@@ -119,6 +119,10 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (Latest Updates)
 
+- **July 2025**: Removed login requirement for viewing posts - now public access
+- **July 2025**: Updated all regional data to include complete district lists (부산 수영구, 중구, 동구 등 추가)
+- **July 2025**: Synchronized regional data between filter sidebar and post creation modal
+- **July 2025**: Login now only required for post creation, not viewing
 - **December 2024**: Added persistent like system with IP-based tracking
 - **December 2024**: Implemented anonymous comment system with name/password authentication
 - **December 2024**: Added multiple image upload support (up to 20 images per post)
