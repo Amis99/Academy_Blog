@@ -122,28 +122,42 @@ export function registerRoutes(app: Express): Server {
       
       // Rename uploaded files to include post ID and update post with final URLs
       const imageUrls: string[] = [];
+      console.log(`Processing ${files?.length || 0} files for post ${post.id} by user ${req.user.username} (admin: ${req.user.isAdmin})`);
+      
       if (files && files.length > 0) {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const tempFilePath = path.join(uploadsDir, file.filename);
+          console.log(`Processing file ${i + 1}: ${file.filename}, original: ${file.originalname}, size: ${file.size}`);
           
           if (fs.existsSync(tempFilePath)) {
             const fileExtension = path.extname(file.originalname).toLowerCase();
             const finalFilename = `post${post.id}_${i + 1}_${uuidv4()}${fileExtension}`;
             const finalFilePath = path.join(uploadsDir, finalFilename);
             
-            // Rename the temp file to final filename
-            fs.renameSync(tempFilePath, finalFilePath);
-            imageUrls.push(`/uploads/${finalFilename}`);
+            try {
+              // Rename the temp file to final filename
+              fs.renameSync(tempFilePath, finalFilePath);
+              imageUrls.push(`/uploads/${finalFilename}`);
+              console.log(`Successfully saved: ${finalFilename}`);
+            } catch (renameError) {
+              console.error(`Failed to rename ${tempFilePath} to ${finalFilePath}:`, renameError);
+            }
           } else {
-            console.error(`Temp file not found: ${tempFilePath}`);
+            console.error(`Temp file not found: ${tempFilePath} (exists: ${fs.existsSync(tempFilePath)})`);
+            // Check if file exists with different name
+            const allFiles = fs.readdirSync(uploadsDir);
+            console.log(`Files in uploads dir:`, allFiles);
           }
         }
         
         // Update post with final image URLs
         if (imageUrls.length > 0) {
+          console.log(`Updating post ${post.id} with ${imageUrls.length} image URLs:`, imageUrls);
           await storage.updatePost(post.id, { imageUrls });
           post.imageUrls = imageUrls;
+        } else {
+          console.log(`No images saved for post ${post.id}`);
         }
       }
 
