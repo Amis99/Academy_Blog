@@ -119,6 +119,10 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (Latest Updates)
 
+- **July 2025**: Implemented post number-based image naming system (post{ID}_{order}_{UUID}.ext)
+- **July 2025**: Fixed image persistence issues by resolving database-filesystem path mismatches
+- **July 2025**: Added comprehensive upload logging for debugging file storage problems
+- **July 2025**: Verified image upload works for both admin and regular users
 - **July 2025**: Fixed text formatting with proper line break support for posts and comments
 - **July 2025**: Enhanced image upload system with UUID-based unique naming and comprehensive error handling
 - **July 2025**: Added file validation (type, size) with user-friendly error messages
