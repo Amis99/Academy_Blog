@@ -61,6 +61,31 @@ export function registerRoutes(app: Express): Server {
   // Serve uploaded images
   app.use("/uploads", express.static(uploadsDir));
 
+  // Dynamic meta tags for social sharing
+  app.get("/meta-info", async (req, res) => {
+    try {
+      const recentPosts = await storage.getPosts();
+      const recentAuthors = recentPosts.slice(0, 3).map(post => post.author.username);
+      
+      let dynamicDescription = "학원 홍보 및 정보 공유 플랫폼";
+      let dynamicTitle = "학원광장 - 학원 홍보 플랫폼";
+      
+      if (recentAuthors.length > 0) {
+        const authorsList = recentAuthors.join(", ");
+        dynamicDescription = `${authorsList} 등의 홍보글이 있습니다 | 학원 홍보 및 정보 공유 플랫폼`;
+        dynamicTitle = `${authorsList} 등의 홍보글 | 학원광장`;
+      }
+      
+      res.json({
+        title: dynamicTitle,
+        description: dynamicDescription,
+        authors: recentAuthors
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch meta info" });
+    }
+  });
+
   // Get posts with optional filters
   app.get("/api/posts", async (req, res) => {
     try {

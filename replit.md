@@ -119,8 +119,9 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (Latest Updates)
 
-- **July 2025**: Implemented automatic link detection in posts and comments - URLs are clickable and open in new tabs
+- **July 2025**: Implemented dynamic meta tags for social media sharing - recent author names appear in link previews
 - **July 2025**: Added automatic image cleanup when posts are deleted - prevents orphaned files
+- **July 2025**: Implemented automatic link detection in posts and comments - URLs are clickable and open in new tabs
 - **July 2025**: Implemented post number-based image naming system (post{ID}_{order}_{UUID}.ext)
 - **July 2025**: Fixed image persistence issues by resolving database-filesystem path mismatches
 - **July 2025**: Added comprehensive upload logging for debugging file storage problems

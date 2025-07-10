@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { useMetaTags } from "@/hooks/use-meta-tags";
 
 export default function HomePage() {
   const [showPostModal, setShowPostModal] = useState(false);
@@ -19,6 +20,9 @@ export default function HomePage() {
   });
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Update meta tags with dynamic content
+  useMetaTags();
 
   const { data: posts, isLoading } = useQuery<PostWithAuthor[]>({
     queryKey: ["/api/posts", filters],
