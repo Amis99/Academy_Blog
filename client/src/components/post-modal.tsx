@@ -59,7 +59,8 @@ export default function PostModal({ onClose }: PostModalProps) {
         credentials: "include",
       });
       if (!response.ok) {
-        throw new Error("Failed to create post");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to create post");
       }
       return response.json();
     },
@@ -73,7 +74,7 @@ export default function PostModal({ onClose }: PostModalProps) {
     },
     onError: (error: Error) => {
       toast({
-        title: "오류",
+        title: "게시글 등록 실패",
         description: error.message,
         variant: "destructive",
       });
@@ -114,6 +115,8 @@ export default function PostModal({ onClose }: PostModalProps) {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    
+    // Check file count
     if (files.length > 20) {
       toast({
         title: "파일 개수 초과",
@@ -122,6 +125,31 @@ export default function PostModal({ onClose }: PostModalProps) {
       });
       return;
     }
+    
+    // Check file types and sizes
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const maxFileSize = 5 * 1024 * 1024; // 5MB
+    
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "파일 형식 오류",
+          description: "JPG, PNG, GIF, WEBP 파일만 업로드 가능합니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (file.size > maxFileSize) {
+        toast({
+          title: "파일 크기 초과",
+          description: "각 파일은 최대 5MB까지 업로드 가능합니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     setImageFiles(files);
   };
 
@@ -228,7 +256,7 @@ export default function PostModal({ onClose }: PostModalProps) {
               <p className="text-gray-500 mb-2">이미지를 선택하세요 (최대 20개)</p>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                 multiple
                 onChange={handleImageChange}
                 className="hidden"

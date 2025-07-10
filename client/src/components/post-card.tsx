@@ -181,6 +181,12 @@ export default function PostCard({ post }: PostCardProps) {
               alt={post.title}
               className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => setIsImageModalOpen(true)}
+              onError={(e) => {
+                console.error(`Failed to load image: ${post.imageUrls[currentImageIndex]}`);
+                // Hide broken image
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+              loading="lazy"
             />
             {hasMultipleImages && (
               <>
@@ -259,6 +265,10 @@ export default function PostCard({ post }: PostCardProps) {
                 src={post.imageUrls[currentImageIndex]} 
                 alt={post.title}
                 className="w-full h-auto rounded-lg"
+                onError={(e) => {
+                  console.error(`Failed to load image in modal: ${post.imageUrls[currentImageIndex]}`);
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
               />
               {hasMultipleImages && (
                 <>

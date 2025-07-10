@@ -7,23 +7,53 @@ import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// Allowed image extensions
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+const maxFileSize = 5 * 1024 * 1024; // 5MB
+
 const storage_config = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    // Generate unique filename using UUID
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    const uniqueFilename = `${uuidv4()}${fileExtension}`;
+    cb(null, uniqueFilename);
   }
 });
 
-const upload = multer({ storage: storage_config });
+// File filter to validate image types
+const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const fileExtension = path.extname(file.originalname).toLowerCase();
+  
+  if (!allowedExtensions.includes(fileExtension)) {
+    return cb(new Error('Only image files (JPG, JPEG, PNG, GIF, WEBP) are allowed'));
+  }
+  
+  // Check MIME type as additional security
+  if (!file.mimetype.startsWith('image/')) {
+    return cb(new Error('Only image files are allowed'));
+  }
+  
+  cb(null, true);
+};
+
+const upload = multer({ 
+  storage: storage_config,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: maxFileSize,
+    files: 20
+  }
+});
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -54,7 +84,23 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Create new post (requires authentication and approval)
-  app.post("/api/posts", upload.array("images", 20), async (req, res) => {
+  app.post("/api/posts", (req, res, next) => {
+    upload.array("images", 20)(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: "File size too large. Maximum 5MB per file." });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({ message: "Too many files. Maximum 20 files allowed." });
+        }
+        return res.status(400).json({ message: `Upload error: ${err.message}` });
+      }
+      if (err) {
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  }, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -66,7 +112,19 @@ export function registerRoutes(app: Express): Server {
     try {
       const postData = insertPostSchema.parse(req.body);
       const files = req.files as Express.Multer.File[];
-      const imageUrls = files ? files.map(file => `/uploads/${file.filename}`) : [];
+      
+      // Verify all uploaded files exist and generate safe URLs
+      const imageUrls: string[] = [];
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const filePath = path.join(uploadsDir, file.filename);
+          if (fs.existsSync(filePath)) {
+            imageUrls.push(`/uploads/${file.filename}`);
+          } else {
+            console.error(`File not found: ${filePath}`);
+          }
+        }
+      }
       
       const post = await storage.createPost({
         ...postData,
@@ -76,6 +134,7 @@ export function registerRoutes(app: Express): Server {
 
       res.status(201).json(post);
     } catch (error) {
+      console.error("Post creation error:", error);
       res.status(400).json({ message: "Invalid post data" });
     }
   });
@@ -111,7 +170,23 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Update post (only author or admin)
-  app.put("/api/posts/:id", upload.array("images", 20), async (req, res) => {
+  app.put("/api/posts/:id", (req, res, next) => {
+    upload.array("images", 20)(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: "File size too large. Maximum 5MB per file." });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({ message: "Too many files. Maximum 20 files allowed." });
+        }
+        return res.status(400).json({ message: `Upload error: ${err.message}` });
+      }
+      if (err) {
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  }, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -131,7 +206,20 @@ export function registerRoutes(app: Express): Server {
 
       const postData = insertPostSchema.parse(req.body);
       const files = req.files as Express.Multer.File[];
-      const imageUrls = files ? files.map(file => `/uploads/${file.filename}`) : post.imageUrls;
+      
+      let imageUrls = post.imageUrls; // Keep existing images by default
+      
+      // If new files uploaded, verify and add them
+      if (files && files.length > 0) {
+        const newImageUrls: string[] = [];
+        for (const file of files) {
+          const filePath = path.join(uploadsDir, file.filename);
+          if (fs.existsSync(filePath)) {
+            newImageUrls.push(`/uploads/${file.filename}`);
+          }
+        }
+        imageUrls = newImageUrls;
+      }
       
       await storage.updatePost(postId, {
         ...postData,
@@ -140,6 +228,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json({ message: "Post updated" });
     } catch (error) {
+      console.error("Post update error:", error);
       res.status(400).json({ message: "Failed to update post" });
     }
   });
