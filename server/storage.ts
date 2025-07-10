@@ -13,6 +13,10 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUserStatus(id: number, status: string): Promise<void>;
   getPendingUsers(): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
+  getBannedUsers(): Promise<User[]>;
+  banUser(id: number, adminId: number, reason: string): Promise<void>;
+  unbanUser(id: number): Promise<void>;
   
   createPost(post: InsertPost & { authorId: number }): Promise<Post>;
   getPosts(filters?: { region?: string; subject?: string; targetGrade?: string }): Promise<PostWithAuthor[]>;
@@ -60,6 +64,32 @@ export class DatabaseStorage implements IStorage {
 
   async getPendingUsers(): Promise<User[]> {
     return await db.select().from(users).where(eq(users.status, "pending"));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getBannedUsers(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.status, "banned"));
+  }
+
+  async banUser(id: number, adminId: number, reason: string): Promise<void> {
+    await db.update(users).set({ 
+      status: "banned", 
+      bannedAt: new Date(),
+      bannedBy: adminId,
+      banReason: reason
+    }).where(eq(users.id, id));
+  }
+
+  async unbanUser(id: number): Promise<void> {
+    await db.update(users).set({ 
+      status: "approved", 
+      bannedAt: null,
+      bannedBy: null,
+      banReason: null
+    }).where(eq(users.id, id));
   }
 
   async createPost(post: InsertPost & { authorId: number }): Promise<Post> {

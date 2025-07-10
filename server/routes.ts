@@ -223,6 +223,63 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // User management routes
+  app.get("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.get("/api/admin/banned-users", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    try {
+      const bannedUsers = await storage.getBannedUsers();
+      res.json(bannedUsers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch banned users" });
+    }
+  });
+
+  app.post("/api/admin/ban-user/:id", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    try {
+      const userId = parseInt(req.params.id);
+      const { reason } = req.body;
+      
+      await storage.banUser(userId, req.user.id, reason || "관리자에 의한 강퇴");
+      res.json({ message: "User banned successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to ban user" });
+    }
+  });
+
+  app.post("/api/admin/unban-user/:id", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    try {
+      const userId = parseInt(req.params.id);
+      await storage.unbanUser(userId);
+      res.json({ message: "User unbanned successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to unban user" });
+    }
+  });
+
   app.delete("/api/admin/posts/:id", async (req, res) => {
     if (!req.isAuthenticated() || !req.user.isAdmin) {
       return res.status(403).json({ message: "Admin access required" });

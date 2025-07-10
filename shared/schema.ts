@@ -8,8 +8,11 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   phone: text("phone").notNull(),
-  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  status: text("status").notNull().default("pending"), // pending, approved, rejected, banned
   isAdmin: boolean("is_admin").notNull().default(false),
+  bannedAt: timestamp("banned_at"),
+  bannedBy: integer("banned_by").references(() => users.id),
+  banReason: text("ban_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
