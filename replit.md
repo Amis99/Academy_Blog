@@ -119,6 +119,10 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (Latest Updates)
 
+- **July 2025**: Fixed image display issue where uploaded images weren't showing properly
+- **July 2025**: Identified and resolved database-filesystem mismatch for image file paths
+- **July 2025**: Implemented horizontal scrolling for multiple images in post cards
+- **July 2025**: Cleaned up incorrect image associations in existing posts
 - **July 2025**: Implemented 3-day post expiration system (only shows posts from last 3 days)
 - **July 2025**: Added admin cleanup function for removing old posts from database
 - **July 2025**: Expanded regional data to include all Korean cities and districts
