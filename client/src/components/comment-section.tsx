@@ -134,6 +134,29 @@ export default function CommentSection({ postId, postAuthorId }: CommentSectionP
 
   const canDeleteComment = user && (user.id === postAuthorId || user.isAdmin);
 
+  // Function to convert URLs to clickable links
+  const renderTextWithLinks = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline break-all"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -224,7 +247,7 @@ export default function CommentSection({ postId, postAuthorId }: CommentSectionP
                             {new Date(comment.createdAt).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                        <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(comment.content)}</p>
                       </div>
                       <div className="flex space-x-2">
                         <Button

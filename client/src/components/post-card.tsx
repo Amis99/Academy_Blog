@@ -121,6 +121,29 @@ export default function PostCard({ post }: PostCardProps) {
     ? post.content.slice(0, 150) + "..." 
     : post.content;
 
+  // Function to convert URLs to clickable links
+  const renderTextWithLinks = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline break-all"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <article className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="p-6">
@@ -151,7 +174,7 @@ export default function PostCard({ post }: PostCardProps) {
 
         <h4 className="text-lg font-semibold text-gray-900 mb-3">{post.title}</h4>
         <div className="text-gray-600 mb-4 whitespace-pre-wrap">
-          <p className="whitespace-pre-wrap leading-relaxed">{displayContent}</p>
+          <p className="whitespace-pre-wrap leading-relaxed">{renderTextWithLinks(displayContent)}</p>
           {shouldShowExpand && (
             <Button 
               variant="ghost" 
