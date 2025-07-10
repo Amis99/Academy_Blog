@@ -8,12 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, loginSchema } from "@shared/schema";
+import { loginSchema } from "@shared/schema";
 import { z } from "zod";
 import { GraduationCap, Users, BookOpen, Star } from "lucide-react";
 
-const registerSchema = insertUserSchema.extend({
+const registerSchema = z.object({
+  username: z.string().min(1, "아이디를 입력해주세요"),
+  password: z.string().min(6, "비밀번호는 6자 이상이어야 합니다"),
   confirmPassword: z.string(),
+  phone: z.string().min(1, "전화번호를 입력해주세요"),
 }).refine(data => data.password === data.confirmPassword, {
   message: "비밀번호가 일치하지 않습니다",
   path: ["confirmPassword"]

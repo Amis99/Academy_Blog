@@ -11,7 +11,7 @@ export const users = pgTable("users", {
   status: text("status").notNull().default("pending"), // pending, approved, rejected, banned
   isAdmin: boolean("is_admin").notNull().default(false),
   bannedAt: timestamp("banned_at"),
-  bannedBy: integer("banned_by").references(() => users.id),
+  bannedBy: integer("banned_by"),
   banReason: text("ban_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -24,14 +24,14 @@ export const posts = pgTable("posts", {
   subject: text("subject").notNull(),
   targetGrade: text("target_grade").notNull(),
   imageUrls: text("image_urls").array(),
-  authorId: integer("author_id").references(() => users.id).notNull(),
+  authorId: integer("author_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
-  postId: integer("post_id").references(() => posts.id).notNull(),
+  postId: integer("post_id").notNull(),
   authorName: text("author_name").notNull(),
   authorPassword: text("author_password").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
