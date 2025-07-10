@@ -28,28 +28,8 @@ const upload = multer({ storage: storage_config });
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Serve uploaded images as static files
-  app.use("/uploads", express.static(uploadsDir, {
-    maxAge: '1d',
-    setHeaders: (res, path) => {
-      const ext = path.split('.').pop()?.toLowerCase();
-      switch (ext) {
-        case 'jpg':
-        case 'jpeg':
-          res.setHeader('Content-Type', 'image/jpeg');
-          break;
-        case 'png':
-          res.setHeader('Content-Type', 'image/png');
-          break;
-        case 'gif':
-          res.setHeader('Content-Type', 'image/gif');
-          break;
-        case 'webp':
-          res.setHeader('Content-Type', 'image/webp');
-          break;
-      }
-    }
-  }));
+  // Serve uploaded images
+  app.use("/uploads", express.static(uploadsDir));
 
   // Get posts with optional filters
   app.get("/api/posts", async (req, res) => {
@@ -183,35 +163,10 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      // Delete associated image files
-      if (post.imageUrls && post.imageUrls.length > 0) {
-        post.imageUrls.forEach(imageUrl => {
-          const filename = imageUrl.replace('/uploads/', '');
-          const filepath = path.join(uploadsDir, filename);
-          if (fs.existsSync(filepath)) {
-            fs.unlinkSync(filepath);
-          }
-        });
-      }
-
       await storage.deletePost(postId);
       res.json({ message: "Post deleted" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete post" });
-    }
-  });
-
-  // Delete old posts (admin only)
-  app.delete("/api/posts/cleanup/old", async (req, res) => {
-    if (!req.isAuthenticated() || !req.user.isAdmin) {
-      return res.status(403).json({ message: "Admin access required" });
-    }
-
-    try {
-      const deletedCount = await storage.deleteOldPosts();
-      res.json({ message: `Deleted ${deletedCount} old posts` });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete old posts" });
     }
   });
 

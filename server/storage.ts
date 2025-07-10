@@ -1,11 +1,9 @@
 import { users, posts, comments, likes, type User, type InsertUser, type Post, type InsertPost, type PostWithAuthor, type Comment, type InsertComment, type Like } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, like, sql, gte } from "drizzle-orm";
+import { eq, desc, and, like, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
-import fs from 'fs';
-import path from 'path';
 
 const PostgresSessionStore = connectPg(session);
 
@@ -24,7 +22,6 @@ export interface IStorage {
   getPosts(filters?: { region?: string; subject?: string; targetGrade?: string }): Promise<PostWithAuthor[]>;
   updatePost(id: number, post: Partial<InsertPost>): Promise<void>;
   deletePost(id: number): Promise<void>;
-  deleteOldPosts(): Promise<number>;
   
   createComment(comment: { content: string; authorName: string; authorPassword: string; postId: number }): Promise<Comment>;
   getComments(postId: number): Promise<Comment[]>;
@@ -109,22 +106,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPosts(filters?: { region?: string; subject?: string; targetGrade?: string }): Promise<PostWithAuthor[]> {
-    // Calculate date 3 days ago
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    
     let query = db.select().from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
-      .where(gte(posts.createdAt, threeDaysAgo))
       .orderBy(desc(posts.createdAt));
 
     if (filters) {
-      const conditions = [gte(posts.createdAt, threeDaysAgo)];
+      const conditions = [];
       if (filters.region) conditions.push(eq(posts.region, filters.region));
       if (filters.subject) conditions.push(eq(posts.subject, filters.subject));
       if (filters.targetGrade) conditions.push(eq(posts.targetGrade, filters.targetGrade));
       
-      query = query.where(and(...conditions)) as any;
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
     }
 
     const results = await query;
@@ -140,35 +134,6 @@ export class DatabaseStorage implements IStorage {
 
   async deletePost(id: number): Promise<void> {
     await db.delete(posts).where(eq(posts.id, id));
-  }
-
-  async deleteOldPosts(): Promise<number> {
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    
-    // Get old posts with their image URLs before deleting
-    const oldPosts = await db.select()
-      .from(posts)
-      .where(sql`${posts.createdAt} < ${threeDaysAgo}`);
-    
-    // Delete associated image files
-    for (const post of oldPosts) {
-      if (post.imageUrls && post.imageUrls.length > 0) {
-        post.imageUrls.forEach(imageUrl => {
-          const filename = imageUrl.replace('/uploads/', '');
-          const filepath = path.join(process.cwd(), 'uploads', filename);
-          if (fs.existsSync(filepath)) {
-            fs.unlinkSync(filepath);
-          }
-        });
-      }
-    }
-    
-    const deletedPosts = await db.delete(posts)
-      .where(sql`${posts.createdAt} < ${threeDaysAgo}`)
-      .returning();
-    
-    return deletedPosts.length;
   }
 
   async createComment(comment: { content: string; authorName: string; authorPassword: string; postId: number }): Promise<Comment> {
