@@ -23,7 +23,7 @@ export interface IStorage {
   updatePost(id: number, post: Partial<InsertPost>): Promise<void>;
   deletePost(id: number): Promise<void>;
   
-  createComment(comment: InsertComment): Promise<Comment>;
+  createComment(comment: { content: string; authorName: string; authorPassword: string; postId: number }): Promise<Comment>;
   getComments(postId: number): Promise<Comment[]>;
   deleteComment(id: number, password: string): Promise<boolean>;
   verifyCommentPassword(id: number, password: string): Promise<boolean>;
@@ -132,7 +132,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(posts).where(eq(posts.id, id));
   }
 
-  async createComment(comment: InsertComment): Promise<Comment> {
+  async createComment(comment: { content: string; authorName: string; authorPassword: string; postId: number }): Promise<Comment> {
     const [newComment] = await db
       .insert(comments)
       .values(comment)

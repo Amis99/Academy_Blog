@@ -187,12 +187,15 @@ export function registerRoutes(app: Express): Server {
       const commentData = insertCommentSchema.parse(req.body);
       
       const comment = await storage.createComment({
-        ...commentData,
-        postId
+        content: commentData.content,
+        authorName: commentData.authorName,
+        authorPassword: commentData.authorPassword,
+        postId: postId
       });
 
       res.status(201).json(comment);
     } catch (error) {
+      console.error("Comment creation error:", error);
       res.status(400).json({ message: "Invalid comment data" });
     }
   });

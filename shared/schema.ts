@@ -72,6 +72,7 @@ export const insertPostSchema = createInsertSchema(posts).omit({
 export const insertCommentSchema = createInsertSchema(comments).omit({
   id: true,
   createdAt: true,
+  postId: true,
 });
 
 export const loginSchema = insertUserSchema.pick({
