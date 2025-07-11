@@ -20,11 +20,12 @@ const maxFileSize = 5 * 1024 * 1024; // 5MB
 
 const storage_config = multer.diskStorage({
   destination: (req, file, cb) => {
-    console.log(`Setting destination for file: ${file.originalname}`);
+    console.log(`[MULTER] Setting destination for file: ${file.originalname}`);
+    console.log(`[MULTER] User: ${req.user?.username}, Admin: ${req.user?.isAdmin}`);
     // Ensure uploads directory exists
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
-      console.log(`Created uploads directory: ${uploadsDir}`);
+      console.log(`[MULTER] Created uploads directory: ${uploadsDir}`);
     }
     cb(null, uploadsDir);
   },
@@ -32,24 +33,32 @@ const storage_config = multer.diskStorage({
     // Generate temporary filename using UUID (will be renamed after post creation)
     const fileExtension = path.extname(file.originalname).toLowerCase();
     const tempFilename = `temp_${uuidv4()}${fileExtension}`;
-    console.log(`Generated temp filename: ${tempFilename} for original: ${file.originalname}`);
+    console.log(`[MULTER] Generated temp filename: ${tempFilename} for original: ${file.originalname}`);
+    console.log(`[MULTER] User: ${req.user?.username}, Admin: ${req.user?.isAdmin}`);
     cb(null, tempFilename);
   }
 });
 
 // File filter to validate image types
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  console.log(`[FILEFILTER] Validating file: ${file.originalname}`);
+  console.log(`[FILEFILTER] User: ${req.user?.username}, Admin: ${req.user?.isAdmin}`);
+  console.log(`[FILEFILTER] MIME type: ${file.mimetype}`);
+  
   const fileExtension = path.extname(file.originalname).toLowerCase();
   
   if (!allowedExtensions.includes(fileExtension)) {
+    console.log(`[FILEFILTER] REJECTED - Invalid extension: ${fileExtension}`);
     return cb(new Error('Only image files (JPG, JPEG, PNG, GIF, WEBP) are allowed'));
   }
   
   // Check MIME type as additional security
   if (!file.mimetype.startsWith('image/')) {
+    console.log(`[FILEFILTER] REJECTED - Invalid MIME type: ${file.mimetype}`);
     return cb(new Error('Only image files are allowed'));
   }
   
+  console.log(`[FILEFILTER] ACCEPTED - File is valid`);
   cb(null, true);
 };
 
