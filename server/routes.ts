@@ -14,6 +14,13 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// Ensure uploads directory has proper permissions
+try {
+  fs.chmodSync(uploadsDir, 0o755);
+} catch (err) {
+  console.warn('Could not set uploads directory permissions:', err);
+}
+
 // Allowed image extensions
 const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const maxFileSize = 5 * 1024 * 1024; // 5MB
@@ -200,12 +207,25 @@ export function registerRoutes(app: Express): Server {
             try {
               // Use copyFile + unlink instead of rename for better reliability
               fs.copyFileSync(tempFilePath, finalFilePath);
-              fs.unlinkSync(tempFilePath);
               
-              imageUrls.push(`/uploads/${finalFilename}`);
-              console.log(`✓ Successfully saved: ${finalFilename}`);
+              // Verify the file was copied successfully
+              if (fs.existsSync(finalFilePath)) {
+                fs.unlinkSync(tempFilePath);
+                imageUrls.push(`/uploads/${finalFilename}`);
+                console.log(`✓ Successfully saved: ${finalFilename} (size: ${fs.statSync(finalFilePath).size} bytes)`);
+              } else {
+                console.error(`✗ File copy failed - destination file not found: ${finalFilePath}`);
+              }
             } catch (fileError) {
               console.error(`✗ Failed to process file ${file.filename}:`, fileError);
+              // Try to clean up temp file if it exists
+              if (fs.existsSync(tempFilePath)) {
+                try {
+                  fs.unlinkSync(tempFilePath);
+                } catch (cleanupError) {
+                  console.error(`✗ Failed to clean up temp file: ${cleanupError}`);
+                }
+              }
             }
           } else {
             console.error(`✗ Temp file not found: ${tempFilePath}`);
