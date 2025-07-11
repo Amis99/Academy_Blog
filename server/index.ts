@@ -1,8 +1,13 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { filePersistence } from "./file-persistence";
 
 const app = express();
+
+// Initialize file persistence system
+log(`File persistence system initialized`);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

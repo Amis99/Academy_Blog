@@ -8,6 +8,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import { filePersistence } from "./file-persistence";
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -134,7 +135,17 @@ export function registerRoutes(app: Express): Server {
       );
 
       const posts = await storage.getPosts(Object.keys(filters).length > 0 ? filters : undefined);
-      res.json(posts);
+      
+      // Validate that image files still exist
+      const validatedPosts = posts.map(post => ({
+        ...post,
+        imageUrls: post.imageUrls?.filter(url => {
+          const filename = url.replace('/uploads/', '');
+          return filePersistence.verifyFile(filename);
+        }) || []
+      }));
+      
+      res.json(validatedPosts);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch posts" });
     }
@@ -210,9 +221,18 @@ export function registerRoutes(app: Express): Server {
               
               // Verify the file was copied successfully
               if (fs.existsSync(finalFilePath)) {
+                // Set proper permissions on the copied file
+                fs.chmodSync(finalFilePath, 0o644);
                 fs.unlinkSync(tempFilePath);
                 imageUrls.push(`/uploads/${finalFilename}`);
                 console.log(`✓ Successfully saved: ${finalFilename} (size: ${fs.statSync(finalFilePath).size} bytes)`);
+                
+                // Verify with persistence manager
+                if (filePersistence.verifyFile(finalFilename)) {
+                  console.log(`✓ File persistence verified: ${finalFilename}`);
+                } else {
+                  console.warn(`⚠ File persistence verification failed: ${finalFilename}`);
+                }
               } else {
                 console.error(`✗ File copy failed - destination file not found: ${finalFilePath}`);
               }
