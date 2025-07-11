@@ -62,6 +62,15 @@ const upload = multer({
   }
 });
 
+// Add debugging middleware to log all file uploads
+upload.array('images', 20).onError = (error: any, req: any, res: any, next: any) => {
+  console.log('=== MULTER ERROR ===');
+  console.log('Error:', error);
+  console.log('User:', req.user?.username);
+  console.log('Is Admin:', req.user?.isAdmin);
+  next(error);
+};
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -116,11 +125,11 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Create new post (requires authentication and approval)
-  app.post("/api/posts", upload.array("images", 20), async (req, res) => {
+  app.post("/api/posts", (req, res, next) => {
     console.log("=== POST REQUEST RECEIVED ===");
     console.log("User authenticated:", req.isAuthenticated());
     console.log("User:", req.user?.username);
-    console.log("Files received:", req.files?.length || 0);
+    console.log("User is admin:", req.user?.isAdmin);
     
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -129,6 +138,22 @@ export function registerRoutes(app: Express): Server {
     if (req.user.status !== "approved") {
       return res.status(403).json({ message: "Account not approved" });
     }
+
+    // Apply multer middleware after authentication check
+    upload.array("images", 20)(req, res, (err) => {
+      if (err) {
+        console.error("=== MULTER ERROR ===");
+        console.error("Error:", err);
+        console.error("User:", req.user?.username);
+        console.error("Is Admin:", req.user?.isAdmin);
+        return res.status(400).json({ message: err.message });
+      }
+      
+      console.log("Multer processing complete");
+      console.log("Files received:", req.files?.length || 0);
+      next();
+    });
+  }, async (req, res) => {
 
     try {
       const postData = insertPostSchema.parse(req.body);
