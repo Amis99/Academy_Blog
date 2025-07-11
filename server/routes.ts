@@ -20,12 +20,19 @@ const maxFileSize = 5 * 1024 * 1024; // 5MB
 
 const storage_config = multer.diskStorage({
   destination: (req, file, cb) => {
+    console.log(`Setting destination for file: ${file.originalname}`);
+    // Ensure uploads directory exists
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      console.log(`Created uploads directory: ${uploadsDir}`);
+    }
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     // Generate temporary filename using UUID (will be renamed after post creation)
     const fileExtension = path.extname(file.originalname).toLowerCase();
     const tempFilename = `temp_${uuidv4()}${fileExtension}`;
+    console.log(`Generated temp filename: ${tempFilename} for original: ${file.originalname}`);
     cb(null, tempFilename);
   }
 });
@@ -109,23 +116,12 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Create new post (requires authentication and approval)
-  app.post("/api/posts", (req, res, next) => {
-    upload.array("images", 20)(req, res, (err) => {
-      if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ message: "File size too large. Maximum 5MB per file." });
-        }
-        if (err.code === 'LIMIT_FILE_COUNT') {
-          return res.status(400).json({ message: "Too many files. Maximum 20 files allowed." });
-        }
-        return res.status(400).json({ message: `Upload error: ${err.message}` });
-      }
-      if (err) {
-        return res.status(400).json({ message: err.message });
-      }
-      next();
-    });
-  }, async (req, res) => {
+  app.post("/api/posts", upload.array("images", 20), async (req, res) => {
+    console.log("=== POST REQUEST RECEIVED ===");
+    console.log("User authenticated:", req.isAuthenticated());
+    console.log("User:", req.user?.username);
+    console.log("Files received:", req.files?.length || 0);
+    
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -138,58 +134,79 @@ export function registerRoutes(app: Express): Server {
       const postData = insertPostSchema.parse(req.body);
       const files = req.files as Express.Multer.File[];
       
-      // First create the post to get the post ID
-      const post = await storage.createPost({
-        ...postData,
-        imageUrls: [], // Will be updated after file renaming
-        authorId: req.user.id
-      });
+      console.log("Post data:", postData);
+      console.log("Files array:", files?.map(f => ({ filename: f.filename, originalname: f.originalname, size: f.size })));
       
-      // Rename uploaded files to include post ID and update post with final URLs
+      // Process image URLs BEFORE creating the post
       const imageUrls: string[] = [];
-      console.log(`Processing ${files?.length || 0} files for post ${post.id} by user ${req.user.username} (admin: ${req.user.isAdmin})`);
       
       if (files && files.length > 0) {
+        // Create post first to get ID
+        const tempPost = await storage.createPost({
+          ...postData,
+          imageUrls: [],
+          authorId: req.user.id
+        });
+        
+        console.log(`Created post ${tempPost.id}, now processing ${files.length} files`);
+        
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const tempFilePath = path.join(uploadsDir, file.filename);
-          console.log(`Processing file ${i + 1}: ${file.filename}, original: ${file.originalname}, size: ${file.size}`);
+          
+          console.log(`Processing file ${i + 1}/${files.length}: ${file.filename}`);
+          console.log(`Temp file path: ${tempFilePath}`);
+          console.log(`Temp file exists: ${fs.existsSync(tempFilePath)}`);
           
           if (fs.existsSync(tempFilePath)) {
             const fileExtension = path.extname(file.originalname).toLowerCase();
-            const finalFilename = `post${post.id}_${i + 1}_${uuidv4()}${fileExtension}`;
+            const finalFilename = `post${tempPost.id}_${i + 1}_${uuidv4()}${fileExtension}`;
             const finalFilePath = path.join(uploadsDir, finalFilename);
             
             try {
-              // Rename the temp file to final filename
-              fs.renameSync(tempFilePath, finalFilePath);
+              // Use copyFile + unlink instead of rename for better reliability
+              fs.copyFileSync(tempFilePath, finalFilePath);
+              fs.unlinkSync(tempFilePath);
+              
               imageUrls.push(`/uploads/${finalFilename}`);
-              console.log(`Successfully saved: ${finalFilename}`);
-            } catch (renameError) {
-              console.error(`Failed to rename ${tempFilePath} to ${finalFilePath}:`, renameError);
+              console.log(`✓ Successfully saved: ${finalFilename}`);
+            } catch (fileError) {
+              console.error(`✗ Failed to process file ${file.filename}:`, fileError);
             }
           } else {
-            console.error(`Temp file not found: ${tempFilePath} (exists: ${fs.existsSync(tempFilePath)})`);
-            // Check if file exists with different name
+            console.error(`✗ Temp file not found: ${tempFilePath}`);
+            // List all files in uploads directory for debugging
             const allFiles = fs.readdirSync(uploadsDir);
-            console.log(`Files in uploads dir:`, allFiles);
+            console.log(`Available files in uploads:`, allFiles);
           }
         }
         
         // Update post with final image URLs
         if (imageUrls.length > 0) {
-          console.log(`Updating post ${post.id} with ${imageUrls.length} image URLs:`, imageUrls);
-          await storage.updatePost(post.id, { imageUrls });
-          post.imageUrls = imageUrls;
+          console.log(`Updating post ${tempPost.id} with ${imageUrls.length} image URLs:`, imageUrls);
+          await storage.updatePost(tempPost.id, { imageUrls });
+          tempPost.imageUrls = imageUrls;
         } else {
-          console.log(`No images saved for post ${post.id}`);
+          console.log(`⚠️ No images saved for post ${tempPost.id}`);
         }
+        
+        console.log("=== POST CREATION COMPLETE ===");
+        res.status(201).json(tempPost);
+      } else {
+        // No files, create post without images
+        const post = await storage.createPost({
+          ...postData,
+          imageUrls: [],
+          authorId: req.user.id
+        });
+        
+        console.log("Created post without images:", post.id);
+        res.status(201).json(post);
       }
-
-      res.status(201).json(post);
     } catch (error) {
-      console.error("Post creation error:", error);
-      res.status(400).json({ message: "Invalid post data" });
+      console.error("=== POST CREATION ERROR ===");
+      console.error("Error details:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : "Invalid post data" });
     }
   });
 
