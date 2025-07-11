@@ -45,6 +45,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageLoadErrors, setImageLoadErrors] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   
   const IconComponent = subjectIcons[post.subject as keyof typeof subjectIcons] || GraduationCap;
@@ -102,19 +103,30 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   const nextImage = () => {
-    if (post.imageUrls && post.imageUrls.length > 0) {
-      setCurrentImageIndex((prev) => (prev + 1) % post.imageUrls.length);
+    if (validImages.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % validImages.length);
     }
   };
 
   const prevImage = () => {
-    if (post.imageUrls && post.imageUrls.length > 0) {
-      setCurrentImageIndex((prev) => (prev - 1 + post.imageUrls.length) % post.imageUrls.length);
+    if (validImages.length > 0) {
+      setCurrentImageIndex((prev) => (prev - 1 + validImages.length) % validImages.length);
     }
   };
 
-  const hasImages = post.imageUrls && post.imageUrls.length > 0;
-  const hasMultipleImages = post.imageUrls && post.imageUrls.length > 1;
+  const handleImageError = (imageUrl: string) => {
+    setImageLoadErrors(prev => new Set([...prev, imageUrl]));
+    console.error(`Failed to load image: ${imageUrl}`);
+  };
+
+  const getValidImages = () => {
+    if (!post.imageUrls) return [];
+    return post.imageUrls.filter(url => !imageLoadErrors.has(url));
+  };
+
+  const validImages = getValidImages();
+  const hasImages = validImages.length > 0;
+  const hasMultipleImages = validImages.length > 1;
 
   const shouldShowExpand = post.content.length > 150;
   const displayContent = shouldShowExpand && !isExpanded 
@@ -200,15 +212,11 @@ export default function PostCard({ post }: PostCardProps) {
         {hasImages && (
           <div className="mb-4 relative">
             <img 
-              src={post.imageUrls[currentImageIndex]} 
+              src={validImages[currentImageIndex]} 
               alt={post.title}
               className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => setIsImageModalOpen(true)}
-              onError={(e) => {
-                console.error(`Failed to load image: ${post.imageUrls[currentImageIndex]}`);
-                // Hide broken image
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
+              onError={() => handleImageError(validImages[currentImageIndex])}
               loading="lazy"
             />
             {hasMultipleImages && (
@@ -226,7 +234,7 @@ export default function PostCard({ post }: PostCardProps) {
                   <ChevronRight className="w-5 h-5" />
                 </button>
                 <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {post.imageUrls.map((_, index) => (
+                  {validImages.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
@@ -277,7 +285,7 @@ export default function PostCard({ post }: PostCardProps) {
               {post.title}
               {hasMultipleImages && (
                 <span className="text-sm text-gray-500 ml-2">
-                  ({currentImageIndex + 1} / {post.imageUrls.length})
+                  ({currentImageIndex + 1} / {validImages.length})
                 </span>
               )}
             </DialogTitle>
@@ -285,13 +293,10 @@ export default function PostCard({ post }: PostCardProps) {
           {hasImages && (
             <div className="relative">
               <img 
-                src={post.imageUrls[currentImageIndex]} 
+                src={validImages[currentImageIndex]} 
                 alt={post.title}
                 className="w-full h-auto rounded-lg"
-                onError={(e) => {
-                  console.error(`Failed to load image in modal: ${post.imageUrls[currentImageIndex]}`);
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
+                onError={() => handleImageError(validImages[currentImageIndex])}
               />
               {hasMultipleImages && (
                 <>
@@ -308,7 +313,7 @@ export default function PostCard({ post }: PostCardProps) {
                     <ChevronRight className="w-6 h-6" />
                   </button>
                   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                    {post.imageUrls.map((_, index) => (
+                    {validImages.map((_, index) => (
                       <button
                         key={index}
                         onClick={() => setCurrentImageIndex(index)}

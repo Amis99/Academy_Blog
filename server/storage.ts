@@ -45,45 +45,6 @@ export class DatabaseStorage implements IStorage {
       pool, 
       createTableIfMissing: true 
     });
-    
-    // Clean up missing images on startup
-    this.cleanupMissingImages();
-  }
-
-  private async cleanupMissingImages() {
-    try {
-      const uploadsDir = path.join(process.cwd(), "uploads");
-      const allPosts = await db.select().from(posts);
-      
-      for (const post of allPosts) {
-        if (post.imageUrls && post.imageUrls.length > 0) {
-          const existingUrls: string[] = [];
-          
-          for (const imageUrl of post.imageUrls) {
-            // Remove the /uploads/ prefix and check if file exists
-            const fileName = imageUrl.replace('/uploads/', '');
-            const filePath = path.join(uploadsDir, fileName);
-            
-            if (fs.existsSync(filePath)) {
-              existingUrls.push(imageUrl);
-            } else {
-              console.log(`Missing image file: ${filePath}, removing from post ${post.id}`);
-            }
-          }
-          
-          // Update post with only existing image URLs
-          if (existingUrls.length !== post.imageUrls.length) {
-            await db.update(posts)
-              .set({ imageUrls: existingUrls.length > 0 ? existingUrls : null })
-              .where(eq(posts.id, post.id));
-            
-            console.log(`Updated post ${post.id}: ${post.imageUrls.length} -> ${existingUrls.length} images`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error cleaning up missing images:', error);
-    }
   }
 
   async getUser(id: number): Promise<User | undefined> {
